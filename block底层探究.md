@@ -124,8 +124,10 @@ block->FuncPtr
 
 ##block底层探究（二）
 [Objective-C底层探究之block（一）](https://www.jianshu.com/p/9f31bf83635b)
+
 从前面我们知道了block调用其实就是函数的调用。block本身用结构体做了一些封装。那现在又有一个疑问。block中可以无缝使用外部的变量。加上**__block**关键字还可以在内部修改变量又是怎么实现呢
 我们可以把前面的代码改一下：
+
 ```
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
@@ -140,7 +142,9 @@ int main(int argc, const char * argv[]) {
     return 0;
 }
 ```
+
 同样使用命令解析得到C++代码
+
 ```
 struct __main_block_impl_0 {
   struct __block_impl impl;
@@ -174,7 +178,9 @@ int main(int argc, const char * argv[]) {
     return 0;
 }
 ```
+
 我们来看看与之前例子不同的部分：
+
 ```
 struct __main_block_impl_0 {
   struct __block_impl impl;
@@ -193,12 +199,16 @@ static int __main_block_func_0(struct __main_block_impl_0 *__cself, int a, int b
             return a+b+c;
         }
 ```
+
 发现**__main_block_impl_0**结构体里面多了一个变量**c**而在**block**创建的时候将**c**变量通过构造函数传了进来
+
 ```
 int (*block)(int,int) = ((int (*)(int, int))&__main_block_impl_0((void *)__main_block_func_0, &__main_block_desc_0_DATA, c));
 ```
+
 也就是说**c**变量实质上是做了一层拷贝。而在函数调用时通过**__cself**参数拿到block的指针并把**c**拷贝一份局部变量后使用。
 那加了**__block**关键字之后是怎么实现在内部改变外部值的呢，我们修改代码如下：
+
 ```
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
@@ -214,7 +224,9 @@ int main(int argc, const char * argv[]) {
     return 0;
 }
 ```
+
 同样使用命令解析：
+
 ```
 struct __Block_byref_c_0 {
   void *__isa;
@@ -262,3 +274,5 @@ int main(int argc, const char * argv[]) {
     return 0;
 }
 ```
+
+可以发现block里面多了一个指针 `__Block_byref_c_0` 类型的指针。而block外面加了__block 标记的变量c被解释成 `__Block_byref_c_0` 类型的结构体。并在调用时将c的地址传入block的构造函数中。block解析的结构体也多了一个指向`__Block_byref_c_0`对象的 c 指针用于储存该地址。这样就可以在block结构体内改变c变量的值了。
